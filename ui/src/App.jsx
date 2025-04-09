@@ -2,7 +2,7 @@ import HomePage from "./routes/homePage/homePage";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import ListPage from "./routes/listPage/listPage";
 import { Layout, RequireAuth } from "./routes/layout/layout";
-import SinglePage from "./routes/singlePage/singlePage";
+import SinglePage, { ErrorBoundary } from "./routes/singlePage/singlePage";
 import ProfilePage from "./routes/profilePage/profilePage";
 import Login from "./routes/login/login";
 import Register from "./routes/register/register";
@@ -42,6 +42,7 @@ const routes = [
         path: "/:id",
         element: <SinglePage />,
         loader: singlePageLoader,
+        errorElement: <ErrorBoundary />,
       },
 
       {

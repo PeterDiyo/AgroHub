@@ -30,16 +30,11 @@ export const getPosts = async (req, res) => {
 export const getPost = async (req, res) => {
   const id = req.params.id;
   try {
+    // First, get the post without including the user
     const post = await prisma.post.findUnique({
       where: { id },
       include: {
         postDetail: true,
-        user: {
-          select: {
-            username: true,
-            avatar: true,
-          },
-        },
       },
     });
 
@@ -47,12 +42,38 @@ export const getPost = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    // Then, try to get the user separately
+    let userData = null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: post.userId },
+        select: {
+          username: true,
+          avatar: true,
+        },
+      });
+      userData = user;
+    } catch (userErr) {
+      console.log("Error fetching user:", userErr);
+      // If user doesn't exist, use default values
+      userData = {
+        username: "Deleted User",
+        avatar: "/noavatar.jpg",
+      };
+    }
+
+    // Combine the post with the user data
+    const postWithUser = {
+      ...post,
+      user: userData,
+    };
+
     const token = req.cookies?.token;
 
     if (token) {
       jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, payload) => {
         if (err) {
-          return res.status(403).json({ message: "Invalid Token" });
+          return res.status(200).json({ ...postWithUser, isSaved: false });
         }
 
         const saved = await prisma.savedPost.findUnique({
@@ -64,10 +85,12 @@ export const getPost = async (req, res) => {
           },
         });
 
-        return res.status(200).json({ ...post, isSaved: saved ? true : false });
+        return res
+          .status(200)
+          .json({ ...postWithUser, isSaved: saved ? true : false });
       });
     } else {
-      return res.status(200).json({ ...post, isSaved: false });
+      return res.status(200).json({ ...postWithUser, isSaved: false });
     }
   } catch (err) {
     console.log(err);
